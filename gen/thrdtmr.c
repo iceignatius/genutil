@@ -1,0 +1,246 @@
+#include <assert.h>
+#include "systime.h"
+#include "thrdtmr.h"
+
+typedef enum thrdtmr_status_t
+{
+    TMS_TERMINATED,
+    TMS_INITIALIZED,
+    TMS_START_CHECKED,
+    TMS_LOOPING,
+    TMS_FINISHING,
+} thrdtmr_status_t;
+
+//------------------------------------------------------------------------------
+static
+int on_startup_default(void *arg)
+{
+    return 0;
+}
+//------------------------------------------------------------------------------
+static
+void on_timer_default(void *arg)
+{
+}
+//------------------------------------------------------------------------------
+static
+int on_terminating_default(void *arg)
+{
+    return 0;
+}
+//------------------------------------------------------------------------------
+void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
+                                    void                     *callbackarg,
+                                    thrdtmr_on_startup_t      on_startup,
+                                    thrdtmr_on_timer_t        on_timer,
+                                    thrdtmr_on_terminating_t  on_terminating)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Constructor.
+     *
+     * @param timer          Object instance.
+     * @param interval       Timer interval in milliseconds.
+     * @param callbackarg    A user defined parameter to passed to all callbacks,
+     *                       and can be NULL if it is no need to use it.
+     * @param on_startup     A callback function that will be called when timer thread starting up,
+     *                       and can be NULL if a callback is not needed.
+     * @param on_timer       A callback function that will be called on each timer event,
+     *                       and can be NULL if a callback is not needed.
+     * @param on_terminating A callback function that will be called when timer thread going terminating,
+     *                       and can be NULL if a callback is not needed.
+     */
+    assert( timer );
+
+    mtx_init(&timer->terminate_mutex, mtx_plain);
+    timer->thread_available = false;
+    timer->interval         = interval;
+    timer->go_terminate     = false;
+    timer->status           = TMS_TERMINATED;
+    timer->callbackarg      = callbackarg;
+    timer->on_startup       = on_startup     ? on_startup     : on_startup_default;
+    timer->on_timer         = on_timer       ? on_timer       : on_timer_default;
+    timer->on_terminating   = on_terminating ? on_terminating : on_terminating_default;
+}
+//------------------------------------------------------------------------------
+void thrdtmr_deinit(thrdtmr_t *timer)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Destructor.
+     *
+     * @param timer Object instance.
+     */
+    assert( timer );
+
+    thrdtmr_terminate_and_wait_terminated(timer);
+    mtx_destroy(&timer->terminate_mutex);
+}
+//------------------------------------------------------------------------------
+unsigned thrdtmr_get_interval(const thrdtmr_t *timer)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Get timer interval.
+     *
+     * @param timer Object instance.
+     * @return The timer interval in milliseconds.
+     */
+    assert( timer );
+
+    return timer->interval;
+}
+//------------------------------------------------------------------------------
+void thrdtmr_set_interval(thrdtmr_t *timer, unsigned value)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Set timer interval.
+     *
+     * @param timer Object instance.
+     * @param value The time interval in milliseconds to set.
+     */
+    assert( timer );
+
+    timer->interval = value;
+}
+//------------------------------------------------------------------------------
+static
+int THRDS_CALL thread_process(thrdtmr_t *timer)
+{
+    int retcode = 0;
+
+    // Initialize
+    timer->go_terminate = timer->on_startup(timer->callbackarg);
+    timer->status       = TMS_INITIALIZED;
+    while( timer->status == TMS_INITIALIZED ) systime_sleep_awhile();
+
+    // Loop work
+    if( !timer->go_terminate ) timer->status = TMS_LOOPING;
+    unsigned time_prev = systime_get_clock_count();
+    while( !timer->go_terminate )
+    {
+        if( timer->interval )
+        {
+            // Run in interval count mode
+            if( systime_get_clock_count() - time_prev >= timer->interval )
+            {
+                timer->on_timer(timer->callbackarg);
+                if( timer->go_terminate ) break;
+
+                time_prev += timer->interval;
+            }
+        }
+        else
+        {
+            // Run in interval ignored mode
+            time_prev = systime_get_clock_count();
+            timer->on_timer(timer->callbackarg);
+        }
+
+        // Idel for a while
+        systime_sleep_awhile();
+    }
+
+    // Finalize
+    timer->status = TMS_FINISHING;
+    retcode = timer->on_terminating(timer->callbackarg);
+    timer->status = TMS_TERMINATED;
+
+    return retcode;
+}
+//------------------------------------------------------------------------------
+int thrdtmr_start(thrdtmr_t *timer)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Start the timer.
+     *
+     * @param timer Object instance.
+     * @return ZERO if succeed;
+     *         or -1 if thread create failed;
+     *         or other error code defined by user if user had set the on_starting callback.
+     *
+     * @remarks This function will be failed because of :
+     *          @li The thread creation failure.
+     *          @li The user defined callback (on_starting) returns failure result.
+     */
+    int retcode = 0;
+
+    assert( timer );
+
+    // Terminate the current thread
+    thrdtmr_terminate_and_wait_terminated(timer);
+
+    // Start thread
+    timer->go_terminate     = false;
+    timer->thread_available = ( thrd_success == thrd_create(&timer->thread, (thrd_start_t)thread_process, timer) );
+    if( !timer->thread_available ) return -1;
+
+    // Wait thread be initialized or failed
+    while( timer->status != TMS_INITIALIZED ) systime_sleep_awhile();
+    timer->status = TMS_START_CHECKED;
+
+    // Wait thread be terminated if it initialize failed
+    if( timer->go_terminate ) retcode = thrdtmr_terminate_and_wait_terminated(timer);
+
+    return retcode;
+}
+//------------------------------------------------------------------------------
+int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @private
+     * @brief Terminate the timer.
+     *
+     * @param timer           Object instance.
+     * @param wait_terminated A flag to indecate if function should wait the timer terminated.
+     *                        This function will return immediately if this flag set to FALSE.
+     * @return The result returned by the user defined callback (on_ending);
+     *         or ZERO by default.
+     *
+     * @note The return value will always be zero if @a wait_terminated set to FALSE.
+     */
+    int retcode = 0;
+
+    assert( timer );
+
+    assert(( timer->status != TMS_TERMINATED )||( !timer->thread_available ));
+    if( timer->status == TMS_TERMINATED ) return 0;
+
+    mtx_lock(&timer->terminate_mutex);
+    if( timer->thread_available )
+    {
+        timer->go_terminate     = true;
+        timer->thread_available = false;
+        if( wait_terminated ) thrd_join  (timer->thread, &retcode);
+        else                  thrd_detach(timer->thread);
+    }
+    mtx_unlock(&timer->terminate_mutex);
+
+    if( wait_terminated )
+    {
+        // Backup for the case that the thread has been detached earlier
+        // but the thread has not finished.
+        while( timer->status != TMS_TERMINATED )
+            systime_sleep_awhile();
+    }
+
+    return retcode;
+}
+//------------------------------------------------------------------------------
+bool thrdtmr_is_terminated(const thrdtmr_t *timer)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Check if the timer is terminated.
+     *
+     * @param timer  Object instance.
+     * @return TRUE if the timer is terminated; and FALSE if not.
+     */
+    assert( timer );
+
+    return timer->status == TMS_TERMINATED;
+}
+//------------------------------------------------------------------------------

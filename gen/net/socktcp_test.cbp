@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="socktcp_test" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Linux_Debug">
+				<Option output="../../debug/socktcp_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-pthread" />
+				</Compiler>
+				<Linker>
+					<Add option="-pthread" />
+					<Add library="rt" />
+				</Linker>
+			</Target>
+			<Target title="Linux_Release">
+				<Option output="../../release/socktcp_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-pthread" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add option="-pthread" />
+					<Add library="rt" />
+				</Linker>
+			</Target>
+			<Target title="Windows_Debug">
+				<Option output="../../debug/socktcp_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-DUNICODE" />
+				</Compiler>
+				<Linker>
+					<Add library="ws2_32" />
+				</Linker>
+			</Target>
+			<Target title="Windows_Release">
+				<Option output="../../release/socktcp_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DUNICODE" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="ws2_32" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+			<Add directory="../../../c11thrd/include" />
+		</Compiler>
+		<Linker>
+			<Add library="c11thrd" />
+			<Add directory="../../../c11thrd/lib" />
+		</Linker>
+		<Unit filename="../systime.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../systime.h" />
+		<Unit filename="../timeinf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../timeinf.h" />
+		<Unit filename="../utf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../utf.h" />
+		<Unit filename="iptype.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="iptype.h" />
+		<Unit filename="sockbase.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sockbase.h" />
+		<Unit filename="socktcp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="socktcp.h" />
+		<Unit filename="socktcp_test.cpp" />
+		<Unit filename="winwsa.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="winwsa.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+			<envvars />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

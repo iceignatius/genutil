@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="cipher_test" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="../../debug/cipher_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="../../release/cipher_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="../../release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-DAES_DEBUG_TEST" />
+			<Add option="-DDES_DEBUG_TEST" />
+		</Compiler>
+		<Unit filename="aes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="aes.h" />
+		<Unit filename="aes_table.h" />
+		<Unit filename="cipher_test.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="des.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="des.h" />
+		<Unit filename="des_bit.h" />
+		<Unit filename="des_table.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

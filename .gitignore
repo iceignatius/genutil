@@ -1,0 +1,5 @@
+/doc/
+/debug/
+/release/
+*.depend
+*.layout
