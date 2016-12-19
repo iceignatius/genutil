@@ -37,24 +37,6 @@ void systime_sleep(unsigned ms)
 #endif
 }
 //------------------------------------------------------------------------------
-void systime_sleep_fragment(void)
-{
-    /**
-     * 讓呼叫這個函式的執行緒休眠一段很小的時間，主要的目的是讓執行緒放出 CPU 資源，
-     * 對於解決 Busy Wait 的需求很有幫助。
-     *
-     * @warning This function has been deprecated,
-     *          and it is recommended to use systime_sleep_awhile instead.
-     */
-#if   defined(__linux__)
-    usleep(1);
-#elif defined(_WIN32)
-    Sleep(1);
-#else
-    #error No implementation on this platform!
-#endif
-}
-//------------------------------------------------------------------------------
 void systime_sleep_awhile(void)
 {
     /**

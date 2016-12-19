@@ -16,14 +16,7 @@
 extern "C" {
 #endif
 
-#ifdef __GNUC__
-    #define SYSTIME_DEPRECATED __attribute__ ((deprecated))
-#else
-    define SYSTIME_DEPRECATED
-#endif
-
 void      systime_sleep(unsigned ms);
-void      systime_sleep_fragment(void) SYSTIME_DEPRECATED;
 void      systime_sleep_awhile(void);
 unsigned  systime_get_clock_count(void);
 
