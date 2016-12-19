@@ -23,7 +23,7 @@ int THRDS_CALL ServerProc(uint16_t *Port)
     char        buf[24];
 
     // Start lesson and print information
-    res   = Server.Listen(TSocketAddr(Socket::AnyIP, Socket::AnyPort));
+    res   = Server.Listen(TSocketAddr(Socket::AnyIP, Socket::AnyPort), false);
     *Port = Server.GetLocalAddr().GetPort();
     Server.SetBlockMode();
     printf("[Server] : Listen : %d\n", res);

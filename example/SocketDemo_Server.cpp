@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
         TSocketTCP Socket;
         bool       Terminate = false;
 
-        if( !Socket.Listen(TSocketAddr(Socket::AnyIP, Socket::AnyPort)) )
+        if( !Socket.Listen(TSocketAddr(Socket::AnyIP, Socket::AnyPort), false) )
             throw string("Cannot start server");
 
         cout << "Server started, port : " << Socket.GetLocalAddr().GetPort() << endl;

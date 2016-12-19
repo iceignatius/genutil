@@ -50,7 +50,7 @@ sockaddr_t socktcp_get_local_addr   (const socktcp_t *self);
 sockaddr_t socktcp_get_remote_addr  (const socktcp_t *self);
 
 bool       socktcp_connect          (      socktcp_t *self, const sockaddr_t *addr, unsigned timeout);
-bool       socktcp_listen           (      socktcp_t *self, const sockaddr_t *localaddr);
+bool       socktcp_listen           (      socktcp_t *self, const sockaddr_t *localaddr, bool reuse);
 void       socktcp_close            (      socktcp_t *self);
 bool       socktcp_is_opened        (const socktcp_t *self);
 
@@ -76,26 +76,26 @@ private:
     TSocketTCP& operator=(const TSocketTCP &Src);  // Not allowed to use
 
 public:
-    void        Release()                                             {        socktcp_release          (this); }                  ///< @see socktcp_t::socktcp_release
+    void        Release()                                             {        socktcp_release          (this); }                       ///< @see socktcp_t::socktcp_release
 
 public:
-    sockfd_t    GetFd()                                               { return socktcp_get_fd           (this); }                  ///< @see socktcp_t::socktcp_get_fd
+    sockfd_t    GetFd()                                               { return socktcp_get_fd           (this); }                       ///< @see socktcp_t::socktcp_get_fd
 
-    void        SetBlockFlag(bool BlockMode)                          {        socktcp_set_block_flag   (this, BlockMode); }       ///< @see socktcp_t::socktcp_set_block_flag
-    void        SetBlockMode()                                        {        socktcp_set_block_mode   (this); }                  ///< @see socktcp_t::socktcp_set_block_mode
-    void        SetNonblockMode()                                     {        socktcp_set_nonblock_mode(this); }                  ///< @see socktcp_t::socktcp_set_nonblock_mode
+    void        SetBlockFlag(bool BlockMode)                          {        socktcp_set_block_flag   (this, BlockMode); }            ///< @see socktcp_t::socktcp_set_block_flag
+    void        SetBlockMode()                                        {        socktcp_set_block_mode   (this); }                       ///< @see socktcp_t::socktcp_set_block_mode
+    void        SetNonblockMode()                                     {        socktcp_set_nonblock_mode(this); }                       ///< @see socktcp_t::socktcp_set_nonblock_mode
 
-    TSocketAddr GetLocalAddr()                                  const { return socktcp_get_local_addr   (this); }                  ///< @see socktcp_t::socktcp_get_local_addr
-    TSocketAddr GetRemoteAddr()                                 const { return socktcp_get_remote_addr  (this); }                  ///< @see socktcp_t::socktcp_get_remote_addr
+    TSocketAddr GetLocalAddr()                                  const { return socktcp_get_local_addr   (this); }                       ///< @see socktcp_t::socktcp_get_local_addr
+    TSocketAddr GetRemoteAddr()                                 const { return socktcp_get_remote_addr  (this); }                       ///< @see socktcp_t::socktcp_get_remote_addr
 
-    bool        Connect(const TSocketAddr &Addr, unsigned Timeout=-1) { return socktcp_connect          (this, &Addr, Timeout); }  ///< @see socktcp_t::socktcp_connect
-    bool        Listen(const TSocketAddr &LocalAddr)                  { return socktcp_listen           (this, &LocalAddr); }      ///< @see socktcp_t::socktcp_listen
-    void        Close()                                               {        socktcp_close            (this); }                  ///< @see socktcp_t::socktcp_close
+    bool        Connect(const TSocketAddr &Addr, unsigned Timeout=-1) { return socktcp_connect          (this, &Addr, Timeout); }       ///< @see socktcp_t::socktcp_connect
+    bool        Listen(const TSocketAddr &LocalAddr, bool Reuse)      { return socktcp_listen           (this, &LocalAddr, Reuse); }    ///< @see socktcp_t::socktcp_listen
+    void        Close()                                               {        socktcp_close            (this); }                       ///< @see socktcp_t::socktcp_close
 
-    TSocketTCP* GetNewConnect()                                       { return (TSocketTCP*) socktcp_get_new_connect(this); }      ///< @see socktcp_t::socktcp_get_new_connect
+    TSocketTCP* GetNewConnect()                                       { return (TSocketTCP*) socktcp_get_new_connect(this); }           ///< @see socktcp_t::socktcp_get_new_connect
 
-    int         Send(const void *Data, size_t Size)                   { return socktcp_send             (this, Data, Size); }      ///< @see socktcp_t::socktcp_send
-    int         Receive(void *Buffer, size_t Size)                    { return socktcp_receive          (this, Buffer, Size); }    ///< @see socktcp_t::socktcp_receive
+    int         Send(const void *Data, size_t Size)                   { return socktcp_send             (this, Data, Size); }           ///< @see socktcp_t::socktcp_send
+    int         Receive(void *Buffer, size_t Size)                    { return socktcp_receive          (this, Buffer, Size); }         ///< @see socktcp_t::socktcp_receive
 
 };
 

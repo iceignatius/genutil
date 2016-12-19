@@ -280,7 +280,7 @@ bool socktcp_connect(socktcp_t *self, const sockaddr_t *addr, unsigned timeout)
     return succeed;
 }
 //------------------------------------------------------------------------------
-bool socktcp_listen(socktcp_t *self, const sockaddr_t *localaddr)
+bool socktcp_listen(socktcp_t *self, const sockaddr_t *localaddr, bool reuse)
 {
     /**
      * @memberof socktcp_t
@@ -293,6 +293,7 @@ bool socktcp_listen(socktcp_t *self, const sockaddr_t *localaddr)
      *                  @li The port can be set to a valid number manually,
      *                      or just set to ZERO to let system select a valid port number.
      *                      And we can get the system selected port number later.
+     * @param reuse     Set TRUE to enable port reuse behaviour; and set FALSE to disable.
      * @return TRUE if succeed; and FALSE if not.
      *
      * @remarks
@@ -311,17 +312,27 @@ bool socktcp_listen(socktcp_t *self, const sockaddr_t *localaddr)
         // Terminate existing connection
         socktcp_close(self);
 
-        // WSA Startup
+        // WSA start up
         if( !winwsa_start_explicit() ) break;
 
         // Create socket
         self->socket = socket(AF_INET, SOCK_STREAM, 0);
         if( !sockfd_is_valid(self->socket) ) break;
 
+#ifdef __linux__
+        // Set port reuse flag.
+        if( reuse )
+        {
+            static const int flag = 1;
+            if( setsockopt(self->socket, SOL_SOCKET, SO_REUSEADDR, (char*)&flag, sizeof(flag)) )
+                break;
+        }
+#endif
+
         // Bind socket
         if( bind(self->socket, (const struct sockaddr*)localaddr, sizeof(sockaddr_t)) ) break;
 
-        // Stert listen
+        // Start listen
         if( listen(self->socket, SOMAXCONN) ) break;
 
         // Set socket to non-blocking mode
