@@ -29,11 +29,11 @@ typedef struct timectr_t
 } timectr_t;
 
 INLINE
-void timectr_reset(timectr_t *ctr, unsigned timeout)
+void timectr_reset_all(timectr_t *ctr, unsigned timeout)
 {
     /**
      * @memberof timectr_t
-     * @brief Reset time counter.
+     * @brief Reset time counter and all its properties.
      *
      * @param ctr     Object instance.
      * @param timeout The time out value in milliseconds.
@@ -43,7 +43,7 @@ void timectr_reset(timectr_t *ctr, unsigned timeout)
 }
 
 INLINE
-void timectr_reset_ctronly(timectr_t *ctr)
+void timectr_reset(timectr_t *ctr)
 {
     /**
      * @memberof timectr_t
@@ -61,7 +61,7 @@ void timectr_init(timectr_t *ctr, unsigned timeout)
      * @details This function is actually the alias of timectr_t::timectr_reset
      *          to help user make their code more readability.
      */
-    timectr_reset(ctr, timeout);
+    timectr_reset_all(ctr, timeout);
 }
 
 INLINE
@@ -149,12 +149,12 @@ public:
     TTimeCounter(unsigned timeout=0) { timectr_init(this, timeout); }  ///< @see timectr_t::timectr_init
 
 public:
-    void     Reset(unsigned timeout) {        timectr_reset(this, timeout); }  ///< @see timectr_t::timectr_reset
-    void     Reset()                 {        timectr_reset_ctronly(this); }   ///< @see timectr_t::timectr_reset_cntonly
-    unsigned GetTimeout()      const { return timectr_get_timeout(this); }     ///< @see timectr_t::timectr_get_timeout
-    unsigned GetPassed()       const { return timectr_get_passed(this); }      ///< @see timectr_t::timectr_get_passed
-    unsigned GetRemain()       const { return timectr_get_remain(this); }      ///< @see timectr_t::timectr_get_remain
-    bool     IsExpired()       const { return timectr_is_expired(this); }      ///< @see timectr_t::timectr_is_expired
+    void     Reset(unsigned timeout) {        timectr_reset_all(this, timeout); }   ///< @see timectr_t::timectr_reset_all
+    void     Reset()                 {        timectr_reset(this); }                ///< @see timectr_t::timectr_reset
+    unsigned GetTimeout()      const { return timectr_get_timeout(this); }          ///< @see timectr_t::timectr_get_timeout
+    unsigned GetPassed()       const { return timectr_get_passed(this); }           ///< @see timectr_t::timectr_get_passed
+    unsigned GetRemain()       const { return timectr_get_remain(this); }           ///< @see timectr_t::timectr_get_remain
+    bool     IsExpired()       const { return timectr_is_expired(this); }           ///< @see timectr_t::timectr_is_expired
 
 };
 
