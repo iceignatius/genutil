@@ -1,7 +1,7 @@
 /**
  * @file
  * @brief     POSIX dirent functions on Windows.
- * @author    ¤ý¤å¦ö
+ * @author    çŽ‹æ–‡ä½‘
  * @date      2016.06.30
  * @copyright ZLib Licence
  * @see       http://www.openfoundry.org/of/projects/2419
