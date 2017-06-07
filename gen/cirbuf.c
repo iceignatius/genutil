@@ -12,7 +12,7 @@
 #endif
 
 #include "minmax.h"
-#include "nextmul.h"
+#include "intutil.h"
 #include "cirbuf.h"
 
 //------------------------------------------------------------------------------
@@ -27,8 +27,8 @@ size_t calc_map_buf_size(size_t sizereq)
     if( !page_size ) page_size = sysconf(_SC_PAGE_SIZE);
     assert( page_size );
 
-    assert( is_pow2(page_size) );
-    size = next_mul_pow2(size, page_size);
+    assert( intutil_is_pow2(page_size) );
+    size = intutil_ceil_mul_pow2(size, page_size);
 #elif defined(CIRBUF_USE_MEMMAP) && defined(_WIN32)
     static long alloc_granu = 0;
     if( !alloc_granu )
@@ -39,14 +39,14 @@ size_t calc_map_buf_size(size_t sizereq)
     }
     assert( alloc_granu );
 
-    assert( is_pow2(alloc_granu) );
-    size = next_mul_pow2(size, alloc_granu);
+    assert( intutil_is_pow2(alloc_granu) );
+    size = intutil_ceil_mul_pow2(size, alloc_granu);
 #else
     // Nothing to do.
 #endif
 
-    return next_pow2(size);  // We need the size to be one of the power series of 2
-                             // for optimisation reason.
+    return intutil_ceil_pow2(size);  // We need the size to be one of the power series of 2
+                                     // for optimisation reason.
 }
 //------------------------------------------------------------------------------
 #if defined(CIRBUF_USE_MEMMAP) && defined(_WIN32)
