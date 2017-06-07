@@ -140,6 +140,48 @@ unsigned long long intutil_ceil_mul_8_ull(unsigned long long value)
     return ( value + ( 8 - 1 ) ) & ~( 8 - 1 );
 }
 
+static inline
+unsigned long intutil_ceil_mul_16(unsigned long value)
+{
+    /// Similarly to ::intutil_ceil_mul_n, but optimised for multiple of 16.
+    return ( value + ( 16 - 1 ) ) & ~( 16 - 1 );
+}
+
+static inline
+unsigned long long intutil_ceil_mul_16_ull(unsigned long long value)
+{
+    /// Unsigned long long version of ::intutil_ceil_mul_4.
+    return ( value + ( 16 - 1 ) ) & ~( 16 - 1 );
+}
+
+static inline
+unsigned long intutil_ceil_mul_32(unsigned long value)
+{
+    /// Similarly to ::intutil_ceil_mul_n, but optimised for multiple of 32.
+    return ( value + ( 32 - 1 ) ) & ~( 32 - 1 );
+}
+
+static inline
+unsigned long long intutil_ceil_mul_32_ull(unsigned long long value)
+{
+    /// Unsigned long long version of ::intutil_ceil_mul_4.
+    return ( value + ( 32 - 1 ) ) & ~( 32 - 1 );
+}
+
+static inline
+unsigned long intutil_ceil_mul_64(unsigned long value)
+{
+    /// Similarly to ::intutil_ceil_mul_n, but optimised for multiple of 64.
+    return ( value + ( 64 - 1 ) ) & ~( 64 - 1 );
+}
+
+static inline
+unsigned long long intutil_ceil_mul_64_ull(unsigned long long value)
+{
+    /// Unsigned long long version of ::intutil_ceil_mul_4.
+    return ( value + ( 64 - 1 ) ) & ~( 64 - 1 );
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
