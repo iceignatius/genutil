@@ -61,6 +61,33 @@ void bufistm_test(void)
     assert(  bufistm_get_readsize(&stream) == 0 );
 }
 
+void bufistm_extension_test(void)
+{
+    static const uint8_t buffer[] =
+    {
+        'l','i','n','e',' ','1', 0x0A,
+        'l','i','n','e',' ','2', 0x0A,
+        'l','i','n','e',' ','3'
+    };
+    bufistm_t stream;
+    char      data[64];
+
+    bufistm_init(&stream, buffer, sizeof(buffer));
+
+    // Read line
+
+    assert( bufistm_read_line(&stream, data, sizeof(data)) );
+    assert( 0 == strcmp(data, "line 1") );
+
+    assert( bufistm_read_line(&stream, data, sizeof(data)) );
+    assert( 0 == strcmp(data, "line 2") );
+
+    assert( bufistm_read_line(&stream, data, sizeof(data)) );
+    assert( 0 == strcmp(data, "line 3") );
+
+    assert( !bufistm_read_line(&stream, data, sizeof(data)) );
+}
+
 void bufostm_test(void)
 {
     uint8_t   buffer[11];
@@ -118,6 +145,7 @@ void bufostm_test(void)
 int main(void)
 {
     bufistm_test();
+    bufistm_extension_test();
     bufostm_test();
 
     return 0;

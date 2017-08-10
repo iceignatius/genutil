@@ -152,6 +152,34 @@ INLINE bool bufistm_skip(bufistm_t *stream, size_t size)
     return bufistm_commit_read(stream, size);
 }
 
+INLINE bool bufistm_read_line(bufistm_t *stream, char *buf, size_t size)
+{
+    /**
+     * @memberof bufistm_t
+     * @brief Read one line of data.
+     *
+     * @param stream Object instance.
+     * @param buf    A buffer to receive data, and a null character will be appended.
+     * @param size   Size of data to read.
+     * @return TRUE if succeed; and FALSE if not.
+     */
+    assert( stream );
+
+    if( !stream->size_rest ) return false;
+    if( !buf ) return false;
+
+    const char *endpos = strchr((const char*)stream->pos_read, 0x0A);
+    size_t datasize = ( endpos )?
+                      ( (intptr_t)endpos - (intptr_t)stream->pos_read ):
+                      ( stream->size_rest );
+    size_t readsize = ( endpos )?( datasize + 1 ):( datasize );
+
+    if( size <= datasize ) return false;
+    memcpy(buf, stream->pos_read, datasize);
+    buf[datasize] = 0;
+
+    return bufistm_commit_read(stream, readsize);
+}
 
 /**
  * @class bufostm_t
