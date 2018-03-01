@@ -75,17 +75,27 @@ typedef struct thrdtmr_t
 
 } thrdtmr_t;
 
-void     thrdtmr_init         (      thrdtmr_t *timer, unsigned                 interval,
-                                                       void                    *userarg,
-                                                       thrdtmr_on_startup_t     on_startup,
-                                                       thrdtmr_on_timer_t       on_timer,
-                                                       thrdtmr_on_terminating_t on_terminating);
-void     thrdtmr_deinit       (      thrdtmr_t *timer);
-unsigned thrdtmr_get_interval (const thrdtmr_t *timer);
-void     thrdtmr_set_interval (      thrdtmr_t *timer, unsigned value);
-int      thrdtmr_start        (      thrdtmr_t *timer);
-int      thrdtmr_terminate    (      thrdtmr_t *timer, bool wait_terminated);
-bool     thrdtmr_is_terminated(const thrdtmr_t *timer);
+void thrdtmr_init(thrdtmr_t               *timer,
+                  unsigned                 interval,
+                  void                    *userarg,
+                  thrdtmr_on_startup_t     on_startup,
+                  thrdtmr_on_timer_t       on_timer,
+                  thrdtmr_on_terminating_t on_terminating);
+void thrdtmr_deinit(thrdtmr_t *timer);
+
+thrdtmr_t* thrdtmr_create(unsigned                 interval,
+                          void                    *userarg,
+                          thrdtmr_on_startup_t     on_startup,
+                          thrdtmr_on_timer_t       on_timer,
+                          thrdtmr_on_terminating_t on_terminating);
+void thrdtmr_release(thrdtmr_t *timer);
+
+unsigned thrdtmr_get_interval(const thrdtmr_t *timer);
+void     thrdtmr_set_interval(      thrdtmr_t *timer, unsigned value);
+
+int  thrdtmr_start        (      thrdtmr_t *timer);
+int  thrdtmr_terminate    (      thrdtmr_t *timer, bool wait_terminated);
+bool thrdtmr_is_terminated(const thrdtmr_t *timer);
 
 /// @memberof thrdtmr_t
 /// @brief Terminate the timer and wait until it is terminated.

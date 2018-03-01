@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 #include "systime.h"
 #include "thrdtmr.h"
 
@@ -29,11 +30,12 @@ int on_terminating_default(void *arg)
     return 0;
 }
 //------------------------------------------------------------------------------
-void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
-                                    void                     *userarg,
-                                    thrdtmr_on_startup_t      on_startup,
-                                    thrdtmr_on_timer_t        on_timer,
-                                    thrdtmr_on_terminating_t  on_terminating)
+void thrdtmr_init(thrdtmr_t               *timer,
+                  unsigned                 interval,
+                  void                    *userarg,
+                  thrdtmr_on_startup_t     on_startup,
+                  thrdtmr_on_timer_t       on_timer,
+                  thrdtmr_on_terminating_t on_terminating)
 {
     /**
      * @memberof thrdtmr_t
@@ -74,6 +76,50 @@ void thrdtmr_deinit(thrdtmr_t *timer)
      */
     thrdtmr_terminate_and_wait_terminated(timer);
     mtx_destroy(&timer->terminate_mutex);
+}
+//------------------------------------------------------------------------------
+thrdtmr_t* thrdtmr_create(unsigned                 interval,
+                          void                    *userarg,
+                          thrdtmr_on_startup_t     on_startup,
+                          thrdtmr_on_timer_t       on_timer,
+                          thrdtmr_on_terminating_t on_terminating)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Create a timer object.
+     *
+     * @param interval       Timer interval in milliseconds.
+     * @param userarg        A user defined parameter to passed to all callbacks,
+     *                       and can be NULL if it is no need to use.
+     * @param on_startup     A callback function that will be called when timer thread starting up,
+     *                       and can be NULL if a callback is not needed.
+     * @param on_timer       A callback function that will be called on each timer event,
+     *                       and can be NULL if a callback is not needed.
+     * @param on_terminating A callback function that will be called when timer thread going terminating,
+     *                       and can be NULL if a callback is not needed.
+     * @return The new object instance, or NULL if failed!
+     */
+    thrdtmr_t *timer = malloc(sizeof(thrdtmr_t));
+
+    if( timer )
+        thrdtmr_init(timer, interval, userarg, on_startup, on_timer, on_terminating);
+
+    return timer;
+}
+//------------------------------------------------------------------------------
+void thrdtmr_release(thrdtmr_t *timer)
+{
+    /**
+     * @memberof thrdtmr_t
+     * @brief Release a timer object.
+     *
+     * @param timer Object instance.
+     */
+    if( timer )
+    {
+        thrdtmr_deinit(timer);
+        free(timer);
+    }
 }
 //------------------------------------------------------------------------------
 unsigned thrdtmr_get_interval(const thrdtmr_t *timer)
