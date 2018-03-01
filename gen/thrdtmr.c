@@ -2,14 +2,14 @@
 #include "systime.h"
 #include "thrdtmr.h"
 
-typedef enum thrdtmr_status_t
+enum
 {
     TMS_TERMINATED,
     TMS_INITIALIZED,
     TMS_START_CHECKED,
     TMS_LOOPING,
     TMS_FINISHING,
-} thrdtmr_status_t;
+};
 
 //------------------------------------------------------------------------------
 static
@@ -30,7 +30,7 @@ int on_terminating_default(void *arg)
 }
 //------------------------------------------------------------------------------
 void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
-                                    void                     *callbackarg,
+                                    void                     *userarg,
                                     thrdtmr_on_startup_t      on_startup,
                                     thrdtmr_on_timer_t        on_timer,
                                     thrdtmr_on_terminating_t  on_terminating)
@@ -41,7 +41,7 @@ void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
      *
      * @param timer          Object instance.
      * @param interval       Timer interval in milliseconds.
-     * @param callbackarg    A user defined parameter to passed to all callbacks,
+     * @param userarg        A user defined parameter to passed to all callbacks,
      *                       and can be NULL if it is no need to use it.
      * @param on_startup     A callback function that will be called when timer thread starting up,
      *                       and can be NULL if a callback is not needed.
@@ -57,7 +57,7 @@ void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
     timer->interval         = interval;
     timer->go_terminate     = false;
     timer->status           = TMS_TERMINATED;
-    timer->callbackarg      = callbackarg;
+    timer->userarg          = userarg;
     timer->on_startup       = on_startup     ? on_startup     : on_startup_default;
     timer->on_timer         = on_timer       ? on_timer       : on_timer_default;
     timer->on_terminating   = on_terminating ? on_terminating : on_terminating_default;
@@ -111,7 +111,7 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
     int retcode = 0;
 
     // Initialize
-    timer->go_terminate = timer->on_startup(timer->callbackarg);
+    timer->go_terminate = timer->on_startup(timer->userarg);
     timer->status       = TMS_INITIALIZED;
     while( timer->status == TMS_INITIALIZED ) systime_sleep_awhile();
 
@@ -125,7 +125,7 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
             // Run in interval count mode
             if( systime_get_clock_count() - time_prev >= timer->interval )
             {
-                timer->on_timer(timer->callbackarg);
+                timer->on_timer(timer->userarg);
                 if( timer->go_terminate ) break;
 
                 time_prev += timer->interval;
@@ -135,7 +135,7 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
         {
             // Run in interval ignored mode
             time_prev = systime_get_clock_count();
-            timer->on_timer(timer->callbackarg);
+            timer->on_timer(timer->userarg);
         }
 
         // Idel for a while
@@ -144,7 +144,7 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
 
     // Finalize
     timer->status = TMS_FINISHING;
-    retcode = timer->on_terminating(timer->callbackarg);
+    retcode = timer->on_terminating(timer->userarg);
     timer->status = TMS_TERMINATED;
 
     return retcode;

@@ -6,7 +6,7 @@
  * @date      2014.10.27
  * @copyright ZLib Licence
  * @see       http://www.openfoundry.org/of/projects/2419
- ******************************************************************************/
+ */
 #ifndef _GEN_THRDTMR_H_
 #define _GEN_THRDTMR_H_
 
@@ -58,19 +58,18 @@ typedef int(*thrdtmr_on_terminating_t)(void *userarg);
  */
 typedef struct thrdtmr_t
 {
-    // WARNING : All variables are private used,
-    //           do NOT use these variables directly!
+    // WARNING: All variables are private!
 
     // Thread and timer
     mtx_t    terminate_mutex;
     thrd_t   thread;
     bool     thread_available;
-    unsigned interval;      // Time interval in milliseconds
-    bool     go_terminate;  // Flag to request thread terminate from other threads
+    unsigned interval;      // Time interval in milliseconds.
+    bool     go_terminate;  // Flag to request thread go terminate.
     int      status;
 
     // Callbacks
-    void                     *callbackarg;
+    void                     *userarg;
     thrdtmr_on_startup_t      on_startup;
     thrdtmr_on_timer_t        on_timer;
     thrdtmr_on_terminating_t  on_terminating;
@@ -78,7 +77,7 @@ typedef struct thrdtmr_t
 } thrdtmr_t;
 
 void     thrdtmr_init         (      thrdtmr_t *timer, unsigned                 interval,
-                                                       void                    *callbackarg,
+                                                       void                    *userarg,
                                                        thrdtmr_on_startup_t     on_startup,
                                                        thrdtmr_on_timer_t       on_timer,
                                                        thrdtmr_on_terminating_t on_terminating);
