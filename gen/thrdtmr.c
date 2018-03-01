@@ -137,7 +137,7 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
         systime_sleep_awhile();
     }
 
-    // Finalize
+    // Finalise
     timer->status = TMS_FINISHING;
     retcode = timer->on_terminating(timer->userarg);
     timer->status = TMS_TERMINATED;
@@ -206,10 +206,18 @@ int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
     mtx_lock(&timer->terminate_mutex);
     if( timer->thread_available )
     {
-        timer->go_terminate     = true;
-        timer->thread_available = false;
-        if( wait_terminated ) thrd_join  (timer->thread, &res);
-        else                  thrd_detach(timer->thread);
+        bool already_terminating =
+            ( timer->status == TMS_FINISHING || timer->status == TMS_TERMINATED );
+
+        if( !already_terminating )
+        {
+            timer->go_terminate     = true;
+            timer->thread_available = false;
+            if( wait_terminated )
+                thrd_join(timer->thread, &res);
+            else
+                thrd_detach(timer->thread);
+        }
     }
     mtx_unlock(&timer->terminate_mutex);
 
