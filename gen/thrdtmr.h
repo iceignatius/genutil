@@ -12,7 +12,6 @@
 
 #include <stdbool.h>
 #include <threads.h>
-#include "inline.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,12 +90,20 @@ bool     thrdtmr_is_terminated(const thrdtmr_t *timer);
 /// @memberof thrdtmr_t
 /// @brief Terminate the timer and wait until it is terminated.
 /// @see thrdtmr_t::thrdtmr_terminate
-INLINE int thrdtmr_terminate_and_wait_terminated(thrdtmr_t *timer) { return thrdtmr_terminate(timer, true); }
+static inline
+int thrdtmr_terminate_and_wait_terminated(thrdtmr_t *timer)
+{
+    return thrdtmr_terminate(timer, true);
+}
 
 /// @memberof thrdtmr_t
 /// @brief Terminate the timer without waiting.
 /// @see thrdtmr_t::thrdtmr_terminate
-INLINE void thrdtmr_terminate_without_waiting(thrdtmr_t *timer) {thrdtmr_terminate(timer, false); }
+static inline
+void thrdtmr_terminate_without_waiting(thrdtmr_t *timer)
+{
+    thrdtmr_terminate(timer, false);
+}
 
 #ifdef __cplusplus
 }  // extern "C"
