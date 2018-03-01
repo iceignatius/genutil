@@ -211,6 +211,8 @@ int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
 
         if( !already_terminating )
         {
+            timer->status = TMS_FINISHING;
+
             timer->go_terminate     = true;
             timer->thread_available = false;
             if( wait_terminated )
