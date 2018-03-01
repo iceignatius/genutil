@@ -5,7 +5,7 @@
 enum
 {
     TMS_TERMINATED,
-    TMS_INITIALIZED,
+    TMS_INITIALISED,
     TMS_START_CHECKED,
     TMS_LOOPING,
     TMS_FINISHING,
@@ -42,7 +42,7 @@ void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
      * @param timer          Object instance.
      * @param interval       Timer interval in milliseconds.
      * @param userarg        A user defined parameter to passed to all callbacks,
-     *                       and can be NULL if it is no need to use it.
+     *                       and can be NULL if it is no need to use.
      * @param on_startup     A callback function that will be called when timer thread starting up,
      *                       and can be NULL if a callback is not needed.
      * @param on_timer       A callback function that will be called on each timer event,
@@ -50,17 +50,18 @@ void thrdtmr_init(thrdtmr_t *timer, unsigned                  interval,
      * @param on_terminating A callback function that will be called when timer thread going terminating,
      *                       and can be NULL if a callback is not needed.
      */
-    assert( timer );
+    timer->thread_available = false;
 
     mtx_init(&timer->terminate_mutex, mtx_plain);
-    timer->thread_available = false;
-    timer->interval         = interval;
-    timer->go_terminate     = false;
-    timer->status           = TMS_TERMINATED;
-    timer->userarg          = userarg;
-    timer->on_startup       = on_startup     ? on_startup     : on_startup_default;
-    timer->on_timer         = on_timer       ? on_timer       : on_timer_default;
-    timer->on_terminating   = on_terminating ? on_terminating : on_terminating_default;
+    timer->go_terminate = false;
+    timer->status       = TMS_TERMINATED;
+
+    timer->interval = interval;
+
+    timer->userarg = userarg;
+    timer->on_startup     = on_startup     ? on_startup     : on_startup_default;
+    timer->on_timer       = on_timer       ? on_timer       : on_timer_default;
+    timer->on_terminating = on_terminating ? on_terminating : on_terminating_default;
 }
 //------------------------------------------------------------------------------
 void thrdtmr_deinit(thrdtmr_t *timer)
@@ -71,8 +72,6 @@ void thrdtmr_deinit(thrdtmr_t *timer)
      *
      * @param timer Object instance.
      */
-    assert( timer );
-
     thrdtmr_terminate_and_wait_terminated(timer);
     mtx_destroy(&timer->terminate_mutex);
 }
@@ -86,8 +85,6 @@ unsigned thrdtmr_get_interval(const thrdtmr_t *timer)
      * @param timer Object instance.
      * @return The timer interval in milliseconds.
      */
-    assert( timer );
-
     return timer->interval;
 }
 //------------------------------------------------------------------------------
@@ -100,8 +97,6 @@ void thrdtmr_set_interval(thrdtmr_t *timer, unsigned value)
      * @param timer Object instance.
      * @param value The time interval in milliseconds to set.
      */
-    assert( timer );
-
     timer->interval = value;
 }
 //------------------------------------------------------------------------------
@@ -112,8 +107,8 @@ int THRDS_CALL thread_process(thrdtmr_t *timer)
 
     // Initialize
     timer->go_terminate = timer->on_startup(timer->userarg);
-    timer->status       = TMS_INITIALIZED;
-    while( timer->status == TMS_INITIALIZED ) systime_sleep_awhile();
+    timer->status       = TMS_INITIALISED;
+    while( timer->status == TMS_INITIALISED ) systime_sleep_awhile();
 
     // Loop work
     if( !timer->go_terminate ) timer->status = TMS_LOOPING;
@@ -167,18 +162,19 @@ int thrdtmr_start(thrdtmr_t *timer)
      */
     int retcode = 0;
 
-    assert( timer );
-
     // Terminate the current thread
     thrdtmr_terminate_and_wait_terminated(timer);
 
     // Start thread
-    timer->go_terminate     = false;
-    timer->thread_available = ( thrd_success == thrd_create(&timer->thread, (thrd_start_t)thread_process, timer) );
+    timer->go_terminate = false;
+    timer->thread_available =
+        ( thrd_success == thrd_create(&timer->thread,
+                                      (thrd_start_t) thread_process,
+                                      timer) );
     if( !timer->thread_available ) return -1;
 
     // Wait thread be initialized or failed
-    while( timer->status != TMS_INITIALIZED ) systime_sleep_awhile();
+    while( timer->status != TMS_INITIALISED ) systime_sleep_awhile();
     timer->status = TMS_START_CHECKED;
 
     // Wait thread be terminated if it initialize failed
@@ -202,9 +198,7 @@ int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
      *
      * @note The return value will always be zero if @a wait_terminated set to FALSE.
      */
-    int retcode = 0;
-
-    assert( timer );
+    int res = 0;
 
     assert(( timer->status != TMS_TERMINATED )||( !timer->thread_available ));
     if( timer->status == TMS_TERMINATED ) return 0;
@@ -214,7 +208,7 @@ int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
     {
         timer->go_terminate     = true;
         timer->thread_available = false;
-        if( wait_terminated ) thrd_join  (timer->thread, &retcode);
+        if( wait_terminated ) thrd_join  (timer->thread, &res);
         else                  thrd_detach(timer->thread);
     }
     mtx_unlock(&timer->terminate_mutex);
@@ -227,7 +221,7 @@ int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
             systime_sleep_awhile();
     }
 
-    return retcode;
+    return res;
 }
 //------------------------------------------------------------------------------
 bool thrdtmr_is_terminated(const thrdtmr_t *timer)
@@ -239,8 +233,6 @@ bool thrdtmr_is_terminated(const thrdtmr_t *timer)
      * @param timer  Object instance.
      * @return TRUE if the timer is terminated; and FALSE if not.
      */
-    assert( timer );
-
     return timer->status == TMS_TERMINATED;
 }
 //------------------------------------------------------------------------------

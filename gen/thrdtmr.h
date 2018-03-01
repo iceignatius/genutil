@@ -60,15 +60,15 @@ typedef struct thrdtmr_t
 {
     // WARNING: All variables are private!
 
-    // Thread and timer
-    mtx_t    terminate_mutex;
-    thrd_t   thread;
-    bool     thread_available;
-    unsigned interval;      // Time interval in milliseconds.
-    bool     go_terminate;  // Flag to request thread go terminate.
-    int      status;
+    thrd_t thread;
+    bool   thread_available;
 
-    // Callbacks
+    mtx_t terminate_mutex;
+    bool  go_terminate; // Flag to request thread go terminate.
+    int   status;
+
+    unsigned interval;  // Time interval in milliseconds.
+
     void                     *userarg;
     thrdtmr_on_startup_t      on_startup;
     thrdtmr_on_timer_t        on_timer;
