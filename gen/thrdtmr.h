@@ -11,7 +11,10 @@
 #define _GEN_THRDTMR_H_
 
 #include <stdbool.h>
-#include <threads.h>
+
+#ifdef __cplusplus
+#include <new>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +31,7 @@ extern "C" {
  * @remarks The return code other than zero will cause the timer go terminate,
  *          and that value will be passed to the caller who want start the timer.
  */
-typedef int(*thrdtmr_on_startup_t)(void *userarg);
+typedef int(*thrdtmr_on_start_t)(void *userarg);
 
 /**
  * @memberof thrdtmr_t
@@ -47,72 +50,47 @@ typedef void(*thrdtmr_on_timer_t)(void *userarg);
  * @return An user defined return code, but we recommended to return ZERO for normal cases.
  *
  * @remarks This function will be called when timer going terminating,
- *          even if ::thrdtmr_on_startup_t callback failed.
+ *          even if ::thrdtmr_on_start_t callback failed.
  */
-typedef int(*thrdtmr_on_terminating_t)(void *userarg);
+typedef int(*thrdtmr_on_stop_t)(void *userarg);
 
 /**
  * @class thrdtmr_t
  * @brief Thread timer
  */
-typedef struct thrdtmr_t
-{
-    // WARNING: All variables are private!
+typedef struct thrdtmr_t thrdtmr_t;
 
-    thrd_t thread;
-    bool   thread_available;
+thrdtmr_t* thrdtmr_create(unsigned            interval,
+                          void               *userarg,
+                          thrdtmr_on_start_t  on_start,
+                          thrdtmr_on_timer_t  on_timer,
+                          thrdtmr_on_stop_t   on_stop);
+void thrdtmr_release(thrdtmr_t *self);
 
-    mtx_t terminate_mutex;
-    bool  go_terminate; // Flag to request thread go terminate.
-    int   status;
+unsigned thrdtmr_get_interval(const thrdtmr_t *self);
+void     thrdtmr_set_interval(      thrdtmr_t *self, unsigned value);
 
-    unsigned interval;  // Time interval in milliseconds.
+int thrdtmr_start(thrdtmr_t *self);
+int thrdtmr_stop (thrdtmr_t *self, bool wait_stopped);
 
-    void                     *userarg;
-    thrdtmr_on_startup_t      on_startup;
-    thrdtmr_on_timer_t        on_timer;
-    thrdtmr_on_terminating_t  on_terminating;
-
-} thrdtmr_t;
-
-void thrdtmr_init(thrdtmr_t               *timer,
-                  unsigned                 interval,
-                  void                    *userarg,
-                  thrdtmr_on_startup_t     on_startup,
-                  thrdtmr_on_timer_t       on_timer,
-                  thrdtmr_on_terminating_t on_terminating);
-void thrdtmr_deinit(thrdtmr_t *timer);
-
-thrdtmr_t* thrdtmr_create(unsigned                 interval,
-                          void                    *userarg,
-                          thrdtmr_on_startup_t     on_startup,
-                          thrdtmr_on_timer_t       on_timer,
-                          thrdtmr_on_terminating_t on_terminating);
-void thrdtmr_release(thrdtmr_t *timer);
-
-unsigned thrdtmr_get_interval(const thrdtmr_t *timer);
-void     thrdtmr_set_interval(      thrdtmr_t *timer, unsigned value);
-
-int  thrdtmr_start        (      thrdtmr_t *timer);
-int  thrdtmr_terminate    (      thrdtmr_t *timer, bool wait_terminated);
-bool thrdtmr_is_terminated(const thrdtmr_t *timer);
+bool thrdtmr_is_started(const thrdtmr_t *self);
 
 /// @memberof thrdtmr_t
 /// @brief Terminate the timer and wait until it is terminated.
-/// @see thrdtmr_t::thrdtmr_terminate
+/// @see thrdtmr_t::thrdtmr_stop
 static inline
-int thrdtmr_terminate_and_wait_terminated(thrdtmr_t *timer)
+int thrdtmr_stop_and_wait(thrdtmr_t *self)
 {
-    return thrdtmr_terminate(timer, true);
+    return thrdtmr_stop(self, true);
 }
 
 /// @memberof thrdtmr_t
 /// @brief Terminate the timer without waiting.
-/// @see thrdtmr_t::thrdtmr_terminate
+/// @see thrdtmr_t::thrdtmr_stop
 static inline
-void thrdtmr_terminate_without_waiting(thrdtmr_t *timer)
+void thrdtmr_stop_not_wait(thrdtmr_t *self)
 {
-    thrdtmr_terminate(timer, false);
+    thrdtmr_stop(self, false);
 }
 
 #ifdef __cplusplus
@@ -125,49 +103,49 @@ void thrdtmr_terminate_without_waiting(thrdtmr_t *timer)
 /**
  * @brief C++ wrapper of @ref thrdtmr_t
  */
-class TThreadTimer
+class ThreadTimer
 {
 private:
-    thrdtmr_t Timer;
+    thrdtmr_t *timer;
 
 private:
-    static int  CThrdOnStartup    (TThreadTimer *This) { return This->OnStartup(); }
-    static void CThrdOnTimer      (TThreadTimer *This) {        This->OnTimer(); }
-    static int  CThrdOnTerminating(TThreadTimer *This) { return This->OnTerminating(); }
+    static int  CThrdOnStart(ThreadTimer *self) { return self->OnStart(); }
+    static void CThrdOnTimer(ThreadTimer *self) {        self->OnTimer(); }
+    static int  CThrdOnStop (ThreadTimer *self) { return self->OnStop(); }
 
 public:
-    TThreadTimer(unsigned Interval=0)
+    ThreadTimer(unsigned Interval=0)
     {
         /// @see thrdtmr_t::thrdtmr_init
-        thrdtmr_init(&Timer,
-                     Interval,
-                     this,
-                     (thrdtmr_on_startup_t)    CThrdOnStartup,
-                     (thrdtmr_on_timer_t)      CThrdOnTimer,
-                     (thrdtmr_on_terminating_t)CThrdOnTerminating);
+        timer = thrdtmr_create(Interval,
+                               this,
+                               (int(*)(void*))  CThrdOnStart,
+                               (void(*)(void*)) CThrdOnTimer,
+                               (int(*)(void*))  CThrdOnStop);
+        if( !timer ) throw std::bad_alloc();
     }
 
-    ~TThreadTimer()
+    virtual ~ThreadTimer()
     {
-        thrdtmr_deinit(&Timer);
+        thrdtmr_release(timer);
     }
 
 private:
-    TThreadTimer(const TThreadTimer &Src);             // Not allowed to use
-    TThreadTimer& operator=(const TThreadTimer &Src);  // Not allowed to use
+    ThreadTimer(const ThreadTimer &Src);             // Not allowed to use
+    ThreadTimer& operator=(const ThreadTimer &Src);  // Not allowed to use
 
 protected:
-    virtual int  OnStartup() { return 0; }      ///< @see thrdtmr_t::thrdtmr_on_startup_t
-    virtual void OnTimer() =0;                  ///< @see thrdtmr_t::thrdtmr_on_timer_t
-    virtual int  OnTerminating() { return 0; }  ///< @see thrdtmr_t::thrdtmr_on_terminating_t
+    virtual int  OnStart() { return 0; }    ///< @see thrdtmr_t::thrdtmr_on_start_t
+    virtual void OnTimer() =0;              ///< @see thrdtmr_t::thrdtmr_on_timer_t
+    virtual int  OnStop() { return 0; }     ///< @see thrdtmr_t::thrdtmr_on_stop_t
 
 public:
-    unsigned GetInterval()                const { return thrdtmr_get_interval (&Timer); }         ///< @see thrdtmr_t::thrdtmr_get_interval
-    void     SetInterval(unsigned Value)        {        thrdtmr_set_interval (&Timer, Value); }  ///< @see thrdtmr_t::thrdtmr_set_interval
-    int      Start()                            { return thrdtmr_start        (&Timer); }         ///< @see thrdtmr_t::thrdtmr_start
-    bool     IsTerminated()               const { return thrdtmr_is_terminated(&Timer); }         ///< @see thrdtmr_t::thrdtmr_is_terminated
-    int      TerminateAndWaitTerminated()       { return thrdtmr_terminate    (&Timer, true); }   ///< @see thrdtmr_t::thrdtmr_terminate_and_wait_terminated
-    void     TerminateWithoutWaiting()          {        thrdtmr_terminate    (&Timer, false); }  ///< @see thrdtmr_t::thrdtmr_terminate_without_waiting
+    unsigned GetInterval()         const { return thrdtmr_get_interval (timer); }           ///< @see thrdtmr_t::thrdtmr_get_interval
+    void     SetInterval(unsigned value) {        thrdtmr_set_interval (timer, value); }    ///< @see thrdtmr_t::thrdtmr_set_interval
+    int      Start()                     { return thrdtmr_start        (timer); }           ///< @see thrdtmr_t::thrdtmr_start
+    bool     IsStarted()           const { return thrdtmr_is_started   (timer); }           ///< @see thrdtmr_t::thrdtmr_is_started
+    int      StopAndWait()               { return thrdtmr_stop_and_wait(timer); }           ///< @see thrdtmr_t::thrdtmr_stop_and_wait
+    void     StopNotWait()               {        thrdtmr_stop_not_wait(timer); }           ///< @see thrdtmr_t::thrdtmr_stop_not_wait
 
 };
 

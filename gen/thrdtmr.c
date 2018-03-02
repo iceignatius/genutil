@@ -1,20 +1,65 @@
-#include <assert.h>
+#include <stdatomic.h>
 #include <stdlib.h>
+#include <threads.h>
 #include "systime.h"
 #include "thrdtmr.h"
 
-enum
+typedef atomic_int sync_t;
+
+struct thrdtmr_t
 {
-    TMS_TERMINATED,
-    TMS_INITIALISED,
-    TMS_START_CHECKED,
-    TMS_LOOPING,
-    TMS_FINISHING,
+    struct
+    {
+        bool   available;
+        thrd_t instance;
+    } thread;
+
+    struct
+    {
+        int    res;
+        sync_t sync;
+    } up;
+
+    struct
+    {
+        atomic_int go_terminate;    // Treat as boolean value.
+    } down;
+
+    unsigned interval;  // Time interval in milliseconds.
+
+    struct
+    {
+        void *userarg;
+        thrdtmr_on_start_t on_start;
+        thrdtmr_on_timer_t on_timer;
+        thrdtmr_on_stop_t  on_stop;
+    } events;
 };
 
 //------------------------------------------------------------------------------
 static
-int on_startup_default(void *arg)
+void sync_init(sync_t *self)
+{
+    atomic_init(self, 0);
+}
+//------------------------------------------------------------------------------
+static
+void sync_reset(sync_t *self)
+{
+    atomic_store(self, 2);
+}
+//------------------------------------------------------------------------------
+static
+void sync_wait(sync_t *self)
+{
+    atomic_fetch_sub(self, 1);
+
+    while( atomic_load(self) > 0 )
+        systime_sleep_awhile();
+}
+//------------------------------------------------------------------------------
+static
+int on_start_default(void *arg)
 {
     return 0;
 }
@@ -25,270 +70,243 @@ void on_timer_default(void *arg)
 }
 //------------------------------------------------------------------------------
 static
-int on_terminating_default(void *arg)
+int on_stop_default(void *arg)
 {
     return 0;
 }
 //------------------------------------------------------------------------------
-void thrdtmr_init(thrdtmr_t               *timer,
-                  unsigned                 interval,
-                  void                    *userarg,
-                  thrdtmr_on_startup_t     on_startup,
-                  thrdtmr_on_timer_t       on_timer,
-                  thrdtmr_on_terminating_t on_terminating)
+static
+void thrdtmr_init(thrdtmr_t          *self,
+                  unsigned            interval,
+                  void               *userarg,
+                  thrdtmr_on_start_t  on_start,
+                  thrdtmr_on_timer_t  on_timer,
+                  thrdtmr_on_stop_t   on_stop)
 {
-    /**
+    /*
      * @memberof thrdtmr_t
      * @brief Constructor.
      *
-     * @param timer          Object instance.
-     * @param interval       Timer interval in milliseconds.
-     * @param userarg        A user defined parameter to passed to all callbacks,
-     *                       and can be NULL if it is no need to use.
-     * @param on_startup     A callback function that will be called when timer thread starting up,
-     *                       and can be NULL if a callback is not needed.
-     * @param on_timer       A callback function that will be called on each timer event,
-     *                       and can be NULL if a callback is not needed.
-     * @param on_terminating A callback function that will be called when timer thread going terminating,
-     *                       and can be NULL if a callback is not needed.
+     * @param self      Object instance.
+     * @param interval  Timer interval in milliseconds.
+     * @param userarg   A user defined parameter to passed to all callbacks,
+     *                  and can be NULL if it is no need to use.
+     * @param on_start  A callback function that will be called when timer thread starting up,
+     *                  and can be NULL if a callback is not needed.
+     * @param on_timer  A callback function that will be called on each timer event,
+     *                  and can be NULL if a callback is not needed.
+     * @param on_stop   A callback function that will be called when timer thread going terminating,
+     *                  and can be NULL if a callback is not needed.
      */
-    timer->thread_available = false;
+    self->thread.available = false;
 
-    mtx_init(&timer->terminate_mutex, mtx_plain);
-    timer->go_terminate = false;
-    timer->status       = TMS_TERMINATED;
+    sync_init(&self->up.sync);
+    atomic_init(&self->down.go_terminate, false);
 
-    timer->interval = interval;
+    self->interval = interval;
 
-    timer->userarg = userarg;
-    timer->on_startup     = on_startup     ? on_startup     : on_startup_default;
-    timer->on_timer       = on_timer       ? on_timer       : on_timer_default;
-    timer->on_terminating = on_terminating ? on_terminating : on_terminating_default;
+    self->events.userarg  = userarg;
+    self->events.on_start = on_start ? on_start : on_start_default;
+    self->events.on_timer = on_timer ? on_timer : on_timer_default;
+    self->events.on_stop  = on_stop  ? on_stop  : on_stop_default;
 }
 //------------------------------------------------------------------------------
-void thrdtmr_deinit(thrdtmr_t *timer)
+static
+void thrdtmr_deinit(thrdtmr_t *self)
 {
-    /**
+    /*
      * @memberof thrdtmr_t
      * @brief Destructor.
      *
-     * @param timer Object instance.
+     * @param self Object instance.
      */
-    thrdtmr_terminate_and_wait_terminated(timer);
-    mtx_destroy(&timer->terminate_mutex);
+    thrdtmr_stop_and_wait(self);
 }
 //------------------------------------------------------------------------------
-thrdtmr_t* thrdtmr_create(unsigned                 interval,
-                          void                    *userarg,
-                          thrdtmr_on_startup_t     on_startup,
-                          thrdtmr_on_timer_t       on_timer,
-                          thrdtmr_on_terminating_t on_terminating)
+thrdtmr_t* thrdtmr_create(unsigned            interval,
+                          void               *userarg,
+                          thrdtmr_on_start_t  on_start,
+                          thrdtmr_on_timer_t  on_timer,
+                          thrdtmr_on_stop_t   on_stop)
 {
     /**
      * @memberof thrdtmr_t
      * @brief Create a timer object.
      *
-     * @param interval       Timer interval in milliseconds.
-     * @param userarg        A user defined parameter to passed to all callbacks,
-     *                       and can be NULL if it is no need to use.
-     * @param on_startup     A callback function that will be called when timer thread starting up,
-     *                       and can be NULL if a callback is not needed.
-     * @param on_timer       A callback function that will be called on each timer event,
-     *                       and can be NULL if a callback is not needed.
-     * @param on_terminating A callback function that will be called when timer thread going terminating,
-     *                       and can be NULL if a callback is not needed.
+     * @param interval  Timer interval in milliseconds.
+     * @param userarg   A user defined parameter to passed to all callbacks,
+     *                  and can be NULL if it is no need to use.
+     * @param on_start  A callback function that will be called when timer thread starting up,
+     *                  and can be NULL if a callback is not needed.
+     * @param on_timer  A callback function that will be called on each timer event,
+     *                  and can be NULL if a callback is not needed.
+     * @param on_stop   A callback function that will be called when timer thread going terminating,
+     *                  and can be NULL if a callback is not needed.
      * @return The new object instance, or NULL if failed!
      */
-    thrdtmr_t *timer = malloc(sizeof(thrdtmr_t));
+    thrdtmr_t *inst = malloc(sizeof(thrdtmr_t));
 
-    if( timer )
-        thrdtmr_init(timer, interval, userarg, on_startup, on_timer, on_terminating);
+    if( inst )
+        thrdtmr_init(inst, interval, userarg, on_start, on_timer, on_stop);
 
-    return timer;
+    return inst;
 }
 //------------------------------------------------------------------------------
-void thrdtmr_release(thrdtmr_t *timer)
+void thrdtmr_release(thrdtmr_t *self)
 {
     /**
      * @memberof thrdtmr_t
      * @brief Release a timer object.
      *
-     * @param timer Object instance.
+     * @param self Object instance.
      */
-    if( timer )
+    if( self )
     {
-        thrdtmr_deinit(timer);
-        free(timer);
+        thrdtmr_deinit(self);
+        free(self);
     }
 }
 //------------------------------------------------------------------------------
-unsigned thrdtmr_get_interval(const thrdtmr_t *timer)
+unsigned thrdtmr_get_interval(const thrdtmr_t *self)
 {
     /**
      * @memberof thrdtmr_t
      * @brief Get timer interval.
      *
-     * @param timer Object instance.
+     * @param self Object instance.
      * @return The timer interval in milliseconds.
      */
-    return timer->interval;
+    return self->interval;
 }
 //------------------------------------------------------------------------------
-void thrdtmr_set_interval(thrdtmr_t *timer, unsigned value)
+void thrdtmr_set_interval(thrdtmr_t *self, unsigned value)
 {
     /**
      * @memberof thrdtmr_t
      * @brief Set timer interval.
      *
-     * @param timer Object instance.
+     * @param self  Object instance.
      * @param value The time interval in milliseconds to set.
      */
-    timer->interval = value;
+    self->interval = value;
 }
 //------------------------------------------------------------------------------
 static
-int THRDS_CALL thread_process(thrdtmr_t *timer)
+int THRDS_CALL thread_process(thrdtmr_t *self)
 {
-    int retcode = 0;
+    self->up.res = self->events.on_start(self->events.userarg);
+    sync_wait(&self->up.sync);
 
-    // Initialize
-    timer->go_terminate = timer->on_startup(timer->userarg);
-    timer->status       = TMS_INITIALISED;
-    while( timer->status == TMS_INITIALISED ) systime_sleep_awhile();
+    if( self->up.res )
+        return self->events.on_stop(self->events.userarg);
 
-    // Loop work
-    if( !timer->go_terminate ) timer->status = TMS_LOOPING;
     unsigned time_prev = systime_get_clock_count();
-    while( !timer->go_terminate )
+    while( !atomic_load(&self->down.go_terminate) )
     {
-        if( timer->interval )
+        if( self->interval )
         {
-            // Run in interval count mode
-            if( systime_get_clock_count() - time_prev >= timer->interval )
+            // Run in interval count mode.
+            if( systime_get_clock_count() - time_prev >= self->interval )
             {
-                timer->on_timer(timer->userarg);
-                if( timer->go_terminate ) break;
+                self->events.on_timer(self->events.userarg);
+                if( atomic_load(&self->down.go_terminate) ) break;
 
-                time_prev += timer->interval;
+                time_prev += self->interval;
             }
         }
         else
         {
-            // Run in interval ignored mode
+            // Run in interval ignored mode.
             time_prev = systime_get_clock_count();
-            timer->on_timer(timer->userarg);
+            self->events.on_timer(self->events.userarg);
         }
 
-        // Idel for a while
         systime_sleep_awhile();
     }
 
-    // Finalise
-    timer->status = TMS_FINISHING;
-    retcode = timer->on_terminating(timer->userarg);
-    timer->status = TMS_TERMINATED;
-
-    return retcode;
+    return self->events.on_stop(self->events.userarg);
 }
 //------------------------------------------------------------------------------
-int thrdtmr_start(thrdtmr_t *timer)
+int thrdtmr_start(thrdtmr_t *self)
 {
     /**
      * @memberof thrdtmr_t
      * @brief Start the timer.
      *
-     * @param timer Object instance.
-     * @return ZERO if succeed;
-     *         or -1 if thread create failed;
-     *         or other error code defined by user if user had set the on_starting callback.
-     *
-     * @remarks This function will be failed because of :
-     *          @li The thread creation failure.
-     *          @li The user defined callback (on_starting) returns failure result.
+     * @param self Object instance.
+     * @retval ZERO if succeed.
+     * @retval -1 if thread create failed.
+     * @retval OTHERS from the user defined ::on_start function.
      */
-    int retcode = 0;
+    thrdtmr_stop_and_wait(self);
 
-    // Terminate the current thread
-    thrdtmr_terminate_and_wait_terminated(timer);
+    self->up.res = 0;
+    sync_reset(&self->up.sync);
+    atomic_store(&self->down.go_terminate, false);
 
-    // Start thread
-    timer->go_terminate = false;
-    timer->thread_available =
-        ( thrd_success == thrd_create(&timer->thread,
-                                      (thrd_start_t) thread_process,
-                                      timer) );
-    if( !timer->thread_available ) return -1;
+    if( thrd_success != thrd_create(&self->thread.instance,
+                                    (thrd_start_t) thread_process,
+                                    self) )
+    {
+        return -1;
+    }
+    self->thread.available = true;
 
-    // Wait thread be initialized or failed
-    while( timer->status != TMS_INITIALISED ) systime_sleep_awhile();
-    timer->status = TMS_START_CHECKED;
+    sync_wait(&self->up.sync);
 
-    // Wait thread be terminated if it initialize failed
-    if( timer->go_terminate ) retcode = thrdtmr_terminate_and_wait_terminated(timer);
+    if( self->up.res )
+        thrdtmr_stop_and_wait(self);
 
-    return retcode;
+    return self->up.res;
 }
 //------------------------------------------------------------------------------
-int thrdtmr_terminate(thrdtmr_t *timer, bool wait_terminated)
+int thrdtmr_stop(thrdtmr_t *self, bool wait_stopped)
 {
     /**
      * @memberof thrdtmr_t
      * @private
      * @brief Terminate the timer.
      *
-     * @param timer           Object instance.
-     * @param wait_terminated A flag to indecate if function should wait the timer terminated.
-     *                        This function will return immediately if this flag set to FALSE.
-     * @return The result returned by the user defined callback (on_ending);
-     *         or ZERO by default.
-     *
-     * @note The return value will always be zero if @a wait_terminated set to FALSE.
+     * @param self         Object instance.
+     * @param wait_stopped TRUE to block and wait timer terminated; and
+     *                     FALSE to return immediately.
+     * @return The user defined value be returned from ::on_stop in block mode;
+     *         or ZERO for default.
      */
+    if( !self->thread.available ) return 0;
+
+    if( thrd_equal(self->thread.instance, thrd_current()) )
+        wait_stopped = false;
+
     int res = 0;
-
-    assert(( timer->status != TMS_TERMINATED )||( !timer->thread_available ));
-    if( timer->status == TMS_TERMINATED ) return 0;
-
-    mtx_lock(&timer->terminate_mutex);
-    if( timer->thread_available )
+    if( !atomic_exchange(&self->down.go_terminate, true) )
     {
-        bool already_terminating =
-            ( timer->status == TMS_FINISHING || timer->status == TMS_TERMINATED );
+        if( wait_stopped )
+            thrd_join(self->thread.instance, &res);
+        else
+            thrd_detach(self->thread.instance);
 
-        if( !already_terminating )
-        {
-            timer->status = TMS_FINISHING;
-
-            timer->go_terminate     = true;
-            timer->thread_available = false;
-            if( wait_terminated )
-                thrd_join(timer->thread, &res);
-            else
-                thrd_detach(timer->thread);
-        }
+        self->thread.available = false;
     }
-    mtx_unlock(&timer->terminate_mutex);
 
-    if( wait_terminated )
+    if( wait_stopped )
     {
-        // Backup for the case that the thread has been detached earlier
-        // but the thread has not finished.
-        while( timer->status != TMS_TERMINATED )
+        while( self->thread.available )
             systime_sleep_awhile();
     }
 
     return res;
 }
 //------------------------------------------------------------------------------
-bool thrdtmr_is_terminated(const thrdtmr_t *timer)
+bool thrdtmr_is_started(const thrdtmr_t *self)
 {
     /**
      * @memberof thrdtmr_t
-     * @brief Check if the timer is terminated.
+     * @brief Check if the timer is started.
      *
-     * @param timer  Object instance.
-     * @return TRUE if the timer is terminated; and FALSE if not.
+     * @param self Object instance.
+     * @return TRUE if the timer is started; and FALSE if not.
      */
-    return timer->status == TMS_TERMINATED;
+    return self->thread.available;
 }
 //------------------------------------------------------------------------------
