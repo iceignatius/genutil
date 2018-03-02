@@ -13,7 +13,11 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-#include <new>
+    #if !defined(__GNUC__) || defined(__EXCEPTIONS)
+        #include <new>
+    #else
+        #include <stdlib.h>
+    #endif
 #endif
 
 #ifdef __cplusplus
@@ -122,7 +126,11 @@ public:
                                (int(*)(void*))  CThrdOnStart,
                                (void(*)(void*)) CThrdOnTimer,
                                (int(*)(void*))  CThrdOnStop);
+#if !defined(__GNUC__) || defined(__EXCEPTIONS)
         if( !timer ) throw std::bad_alloc();
+#else
+        if( !timer ) abort();
+#endif
     }
 
     virtual ~ThreadTimer()
