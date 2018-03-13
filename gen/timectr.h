@@ -67,9 +67,19 @@ void timectr_reset(timectr_t *self)
 {
     /**
      * @memberof timectr_t
-     * @brief Reset time counter with the current time out setting.
+     * @brief Restart time count from now.
      */
     self->start = systime_get_clock_count();
+}
+
+static inline
+void timectr_next_round(timectr_t *self)
+{
+    /**
+     * @memberof timectr_t
+     * @brief Restart time count from the last expired time.
+     */
+    self->start += self->range;
 }
 
 static inline
@@ -145,6 +155,7 @@ public:
 public:
     void     Reset(unsigned timeout) {        timectr_reset_all(this, timeout); }   ///< @see timectr_t::timectr_reset_all
     void     Reset()                 {        timectr_reset(this); }                ///< @see timectr_t::timectr_reset
+    void     NextRound()             {        timectr_next_round(this); }           ///< @see timectr_t::timectr_next_round
     unsigned GetTimeout()      const { return timectr_get_timeout(this); }          ///< @see timectr_t::timectr_get_timeout
     unsigned GetPassed()       const { return timectr_get_passed(this); }           ///< @see timectr_t::timectr_get_passed
     unsigned GetRemain()       const { return timectr_get_remain(this); }           ///< @see timectr_t::timectr_get_remain
