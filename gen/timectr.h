@@ -29,39 +29,39 @@ typedef struct timectr_t
 } timectr_t;
 
 INLINE
-void timectr_reset_all(timectr_t *ctr, unsigned timeout)
+void timectr_reset_all(timectr_t *self, unsigned timeout)
 {
     /**
      * @memberof timectr_t
      * @brief Reset time counter and all its properties.
      *
-     * @param ctr     Object instance.
+     * @param self    Object instance.
      * @param timeout The time out value in milliseconds.
      */
-    ctr->start = systime_get_clock_count();
-    ctr->range = timeout;
+    self->start = systime_get_clock_count();
+    self->range = timeout;
 }
 
 INLINE
-void timectr_reset(timectr_t *ctr)
+void timectr_reset(timectr_t *self)
 {
     /**
      * @memberof timectr_t
      * @brief Reset time counter with the current time out setting.
      */
-    ctr->start = systime_get_clock_count();
+    self->start = systime_get_clock_count();
 }
 
 INLINE
-void timectr_init(timectr_t *ctr, unsigned timeout)
+void timectr_init(timectr_t *self, unsigned timeout)
 {
     /**
      * @memberof timectr_t
-     * @brief Initialize time counter.
+     * @brief Initialise time counter.
      * @details This function is actually the alias of timectr_t::timectr_reset
      *          to help user make their code more readability.
      */
-    timectr_reset_all(ctr, timeout);
+    timectr_reset_all(self, timeout);
 }
 
 INLINE
@@ -73,65 +73,65 @@ timectr_t timectr_init_inline(unsigned timeout)
      * @details This function actually do the same thing of timectr_t::timectr_init,
      *          but try to help user to decrease their code lines.
      */
-    timectr_t ctr;
-    timectr_init(&ctr, timeout);
-    return ctr;
+    timectr_t self;
+    timectr_init(&self, timeout);
+    return self;
 }
 
 INLINE
-unsigned timectr_get_timeout(const timectr_t *ctr)
+unsigned timectr_get_timeout(const timectr_t *self)
 {
     /**
      * @memberof timectr_t
      * @brief Get time out setting of the time counter.
      *
-     * @param ctr Object instance.
+     * @param self Object instance.
      * @return The time out value in milliseconds.
      */
-    return ctr->range;
+    return self->range;
 }
 
 INLINE
-unsigned timectr_get_passed(const timectr_t *ctr)
+unsigned timectr_get_passed(const timectr_t *self)
 {
     /**
      * @memberof timectr_t
      * @brief Get the time passed from the last time the time counter been reset.
      *
-     * @param ctr Object instance.
+     * @param self Object instance.
      * @return The time passed in milliseconds.
      */
-    return systime_get_clock_count() - ctr->start;
+    return systime_get_clock_count() - self->start;
 }
 
 INLINE
-unsigned timectr_get_remain(const timectr_t *ctr)
+unsigned timectr_get_remain(const timectr_t *self)
 {
     /**
      * @memberof timectr_t
      * @brief Get time remain.
      *
-     * @param ctr Object instance.
+     * @param self Object instance.
      * @return The time remain in milliseconds;
      *         and ZERO will be returned if the time has expired.
      */
-    unsigned passed = systime_get_clock_count() - ctr->start;
-    return ( passed < ctr->range )?( ctr->range - passed ):( 0 );
+    unsigned passed = systime_get_clock_count() - self->start;
+    return ( passed < self->range )?( self->range - passed ):( 0 );
 }
 
 INLINE
-bool timectr_is_expired(const timectr_t *ctr)
+bool timectr_is_expired(const timectr_t *self)
 {
     /**
      * @memberof timectr_t
      * @brief Check if the timer expired.
      *
-     * @param ctr Object instance.
+     * @param self Object instance.
      * @return TRUE if the timer has expired
      *         (the time passed be equal or longer then the time out value);
      *         and FALSE if not.
      */
-    return systime_get_clock_count() - ctr->start >= ctr->range;
+    return systime_get_clock_count() - self->start >= self->range;
 }
 
 #ifdef __cplusplus
