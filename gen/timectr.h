@@ -143,10 +143,10 @@ bool timectr_is_expired(const timectr_t *self)
 /**
  * @brief C++ wrapper of @ref timectr_t
  */
-class TTimeCounter : protected timectr_t
+class TimeCounter : protected timectr_t
 {
 public:
-    TTimeCounter(unsigned timeout=0) { timectr_init(this, timeout); }  ///< @see timectr_t::timectr_init
+    TimeCounter(unsigned timeout=0) { timectr_init(this, timeout); }  ///< @see timectr_t::timectr_init
 
 public:
     void     Reset(unsigned timeout) {        timectr_reset_all(this, timeout); }   ///< @see timectr_t::timectr_reset_all
