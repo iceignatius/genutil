@@ -11,7 +11,6 @@
 #define _GEN_TIMECTR_H_
 
 #include <stdbool.h>
-#include "inline.h"
 #include "systime.h"
 
 #ifdef __cplusplus
@@ -28,7 +27,7 @@ typedef struct timectr_t
     unsigned range;
 } timectr_t;
 
-INLINE
+static inline
 void timectr_reset_all(timectr_t *self, unsigned timeout)
 {
     /**
@@ -42,7 +41,7 @@ void timectr_reset_all(timectr_t *self, unsigned timeout)
     self->range = timeout;
 }
 
-INLINE
+static inline
 void timectr_reset(timectr_t *self)
 {
     /**
@@ -52,7 +51,7 @@ void timectr_reset(timectr_t *self)
     self->start = systime_get_clock_count();
 }
 
-INLINE
+static inline
 void timectr_init(timectr_t *self, unsigned timeout)
 {
     /**
@@ -64,7 +63,7 @@ void timectr_init(timectr_t *self, unsigned timeout)
     timectr_reset_all(self, timeout);
 }
 
-INLINE
+static inline
 timectr_t timectr_init_inline(unsigned timeout)
 {
     /**
@@ -78,7 +77,7 @@ timectr_t timectr_init_inline(unsigned timeout)
     return self;
 }
 
-INLINE
+static inline
 unsigned timectr_get_timeout(const timectr_t *self)
 {
     /**
@@ -91,7 +90,7 @@ unsigned timectr_get_timeout(const timectr_t *self)
     return self->range;
 }
 
-INLINE
+static inline
 unsigned timectr_get_passed(const timectr_t *self)
 {
     /**
@@ -104,7 +103,7 @@ unsigned timectr_get_passed(const timectr_t *self)
     return systime_get_clock_count() - self->start;
 }
 
-INLINE
+static inline
 unsigned timectr_get_remain(const timectr_t *self)
 {
     /**
@@ -119,7 +118,7 @@ unsigned timectr_get_remain(const timectr_t *self)
     return ( passed < self->range )?( self->range - passed ):( 0 );
 }
 
-INLINE
+static inline
 bool timectr_is_expired(const timectr_t *self)
 {
     /**
