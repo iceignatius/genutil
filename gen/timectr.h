@@ -28,6 +28,27 @@ typedef struct timectr_t
 } timectr_t;
 
 static inline
+timectr_t timectr_init(timectr_t *self, unsigned timeout)
+{
+    /**
+     * @memberof timectr_t
+     * @brief Initialise time counter.
+     *
+     * @param self    The buffer to a counter object to be initialised,
+     *                and can be NULL if you want assign the initial value by the return value.
+     * @param timeout The time out value in milliseconds.
+     * @return The initialised object.
+     */
+    timectr_t inst;
+    self = self ? self : &inst;
+
+    self->start = systime_get_clock_count();
+    self->range = timeout;
+
+    return *self;
+}
+
+static inline
 void timectr_reset_all(timectr_t *self, unsigned timeout)
 {
     /**
@@ -49,32 +70,6 @@ void timectr_reset(timectr_t *self)
      * @brief Reset time counter with the current time out setting.
      */
     self->start = systime_get_clock_count();
-}
-
-static inline
-void timectr_init(timectr_t *self, unsigned timeout)
-{
-    /**
-     * @memberof timectr_t
-     * @brief Initialise time counter.
-     * @details This function is actually the alias of timectr_t::timectr_reset
-     *          to help user make their code more readability.
-     */
-    timectr_reset_all(self, timeout);
-}
-
-static inline
-timectr_t timectr_init_inline(unsigned timeout)
-{
-    /**
-     * @memberof timectr_t
-     * @brief Initialize time counter.
-     * @details This function actually do the same thing of timectr_t::timectr_init,
-     *          but try to help user to decrease their code lines.
-     */
-    timectr_t self;
-    timectr_init(&self, timeout);
-    return self;
 }
 
 static inline
