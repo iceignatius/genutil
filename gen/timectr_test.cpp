@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[])
 {
-    TTimeCounter timer;
+    TimeCounter timer;
 
     timer.Reset(5*1000);
     for(int i=0; i<8; ++i, systime_sleep(1*1000))
