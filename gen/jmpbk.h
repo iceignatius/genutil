@@ -26,6 +26,11 @@
         ...
         if( ... ) JMPBK_THROW(0);  // Break and go to error catch block.
                                    // Throw ZERO value means that you do not care what the final error code is.
+
+        if( ... ) JMPBK_THROW_MSG(3, "Error description");  // Throw an error code and error description.
+
+        if( ... ) JMPBK_THROW_MSG(9, "%s, %d", "what value", 11);   // The throw support "printf" like arguments.
+
         ...
         ...  // The statements here will be skipped if we has throw an error code above.
         ...  // Then the flow will jump to JMPBLK_END, or one of the catch blocks if it has.
@@ -93,51 +98,66 @@
  * @li It does not support duplicated JUMBK process in a function.
  */
 
+#include <stdio.h>
+
 /// Block begin.
-#define JMPBK_BEGIN                                     \
-        {                                               \
-            int  __jmpbk_errcode = 0;                   \
-        __jmpbk_begin:                                  \
-            switch( __jmpbk_errcode )                   \
-            {                                           \
-                case 0:                                 \
+#define JMPBK_BEGIN                                                             \
+        {                                                                       \
+            int  __jmpbk_errcode = 0;                                           \
+            char __jmpbk_errmsg[1024] = {0};                                    \
+            (void)__jmpbk_errmsg;                                               \
+        __jmpbk_begin:                                                          \
+            switch( __jmpbk_errcode )                                           \
+            {                                                                   \
+                case 0:                                                         \
                 {
 
 /// Catch specific error code.
-#define JMPBK_CATCH(errcode)                            \
-                }                                       \
-                break;                                  \
-                case (errcode):                         \
+#define JMPBK_CATCH(errcode)                                                    \
+                }                                                               \
+                break;                                                          \
+                case (errcode):                                                 \
                 {
 
 /// Catch all error codes.
-#define JMPBK_CATCH_ALL                                 \
-                }                                       \
-                break;                                  \
-                default:                                \
+#define JMPBK_CATCH_ALL                                                         \
+                }                                                               \
+                break;                                                          \
+                default:                                                        \
                 {
 
 /// Final process.
-#define JMPBK_FINAL                                     \
-                }                                       \
-            }                                           \
-            {                                           \
+#define JMPBK_FINAL                                                             \
+                }                                                               \
+            }                                                                   \
+            {                                                                   \
                 {
 
 /// Block end.
-#define JMPBK_END                                       \
-                }                                       \
-            }                                           \
+#define JMPBK_END                                                               \
+                }                                                               \
+            }                                                                   \
         }
 
 /// Throw an error code.
-#define JMPBK_THROW(errcode)                            \
-        do{                                             \
-            __jmpbk_errcode = errcode ? errcode : -1;   \
-            goto __jmpbk_begin;                         \
+#define JMPBK_THROW(errcode)                                                    \
+        do{                                                                     \
+            __jmpbk_errcode = errcode ? errcode : -1;                           \
+            goto __jmpbk_begin;                                                 \
         } while(0)
 
-/// The error code thrown by @ref JMPBK_THROW.
+/// Throw an error code and human readable error description text.
+#define JMPBK_THROW_MSG(errcode, errmsg, args...)                               \
+        do{                                                                     \
+            __jmpbk_errcode = errcode ? errcode : -1;                           \
+            snprintf(__jmpbk_errmsg, sizeof(__jmpbk_errmsg), errmsg, ##args);   \
+            goto __jmpbk_begin;                                                 \
+        } while(0)
+
+/// The error code thrown by @ref JMPBK_THROW or @ref JMPBK_THROW_MSG.
 #define JMPBK_ERRCODE  __jmpbk_errcode
+
+/// The error description text thrown by @ref JMPBK_THROW_MSG.
+#define JMPBK_ERRMSG   __jmpbk_errmsg
 
 #endif
