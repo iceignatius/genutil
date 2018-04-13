@@ -664,7 +664,7 @@ bool file_is_file_existed(const char *file)
     if( stat(file, &state) ) return false;
 
     DIR *fdir = opendir(file);
-    closedir(fdir);
+    if( fdir ) closedir(fdir);
 
     return !fdir;
 #elif defined(_WIN32)
@@ -696,7 +696,7 @@ bool file_is_dir_existed(const char *dir)
     if( stat(dir, &state) ) return false;
 
     DIR *fdir = opendir(dir);
-    closedir(fdir);
+    if( fdir ) closedir(fdir);
 
     return fdir;
 #elif defined(_WIN32)
